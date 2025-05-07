@@ -73,3 +73,9 @@ cover/
 # Logs
 *.log
 logs/
+
+pospcp/
+
+leer_dbf.py
+test_core.py
+test.py
