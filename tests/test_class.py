@@ -19,15 +19,25 @@ def main():
     # Initialize reader
     enc_pass = "my pass"
     source_path = r"C:\\Users\\campo\\Documents\\projects\\DBF_encrypted\pospcp"
-    table_name = "CANOTA"
+    table_name = "VENTA"
     limit_rows = 2
     
     print(f"Connecting to DBF at: {source_path}")
     reader = DBFReader(source_path, enc_pass)
 
-    resullt = reader.to_json(table_name, limit_rows)
-
-    print(resullt)
+    # Example 1: Find notes by date range using memory filtering
+    filters = [
+        {
+            'field': 'F_EMISION',
+            'operator': 'range',
+            'from_value': '05/05/2025',  # May 5th, 2025
+            'to_value': '05/05/2025',    # May 5th, 2025
+            'is_date': True
+        }
+    ]
+    print("\nFinding notes for the entire day of 16/12/2020 (newest first):")
+    result = reader.to_json(table_name, limit_rows, filters)
+    print(result)
 
 if __name__ == "__main__":
     main()
