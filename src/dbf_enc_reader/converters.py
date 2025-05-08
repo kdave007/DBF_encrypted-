@@ -13,7 +13,7 @@ class DataConverter:
             Trimmed value maintaining its type
         """
         if isinstance(value, str):
-            return value.rstrip()  # Only right trim for strings
+            return value.strip()  # Trim both leading and trailing spaces
         elif isinstance(value, (int, float, Decimal)):
             return value  # Don't trim numbers
         elif value is None:

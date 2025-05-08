@@ -29,33 +29,89 @@ DBF_encrypted/
 ├── requirements.txt         # Project dependencies
 ├── setup.py                # Package setup file
 ├── LICENSE                 # License file
-└── README.md              # This file
+└── README.md              # DBF Encrypted Reader
 
-## Features
-- Read encrypted and unencrypted DBF files
-- Support for various DBF formats
-- PYODBC integration
-- Easy-to-use API
-- Comprehensive error handling
+## Prerequisites
+
+1. Python 3.x
+2. Advantage Data Provider installed (version 10.10 or later)
+3. Required Python packages (install via `pip install -r requirements.txt`)
 
 ## Installation
+
+1. Clone this repository
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+1. Ensure Advantage Data Provider is properly installed
+2. Locate your Advantage.Data.Provider.dll path (typically in Program Files)
+3. Configure the DLL path in your code
+
 ## Usage Example
+
 ```python
-from dbf_reader import DBFReader
+from src.dbf_enc_reader.core import DBFReader
+from src.dbf_enc_reader.connection import DBFConnection
 
-# Initialize reader
-reader = DBFReader('path/to/file.dbf')
+def main():
+    # Set the DLL path first
+    dll_path = "path/to/Advantage.Data.Provider.dll"
+    DBFConnection.set_dll_path(dll_path)
 
-# Read encrypted DBF
-data = reader.read_encrypted(encryption_key='your-key')
+    # Initialize reader with your DBF path and encryption password
+    reader = DBFReader("path/to/dbf/folder", "your_encryption_password")
 
-# Convert to dictionary/JSON format
-json_data = data.to_json()
+    # Read records from a table (optional limit)
+    result = reader.to_json("TABLE_NAME", limit=2)
+    print(result)
 ```
+
+## Features
+
+- Read encrypted DBF files securely
+- Convert DBF records to JSON format
+- Limit number of records returned
+- Proper connection management and cleanup
+- Error handling for common issues
+
+## Security Notes
+
+- Never store encryption passwords in code
+- Use environment variables or secure configuration management
+- Keep DLL paths in configuration files
+
+## Testing
+
+To run the test class:
+```bash
+python tests/test_class.py
+```
+
+Make sure to:
+1. Update the DLL path
+2. Set proper encryption password
+3. Configure correct DBF file path
+4. Specify the table name you want to read
+
+## Error Handling
+
+The library includes error handling for common issues:
+- Missing DLL
+- Invalid paths
+- Connection problems
+- Encryption errors
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
 
 ## Development Setup
 1. Clone the repository
