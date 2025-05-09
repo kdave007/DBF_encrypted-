@@ -64,22 +64,36 @@ class DBFConnection:
         except ImportError as e:
             raise RuntimeError(f"Failed to import Advantage modules: {str(e)}. Make sure DLL is loaded correctly.")
 
-    def get_reader(self, table_name: str):
-        """Get a reader for the specified table."""
+    def get_reader(self, table_name: str, sql_query: str = None):
+        """Get a reader for the specified table.
+        
+        Args:
+            table_name: Name of the table to read
+            sql_query: Optional SQL query to execute instead of reading whole table
+            
+        Returns:
+            Data reader object
+        """
         if not self.conn or not hasattr(self.conn, 'State') or self.conn.State != 'Open':
             self.connect()
 
         try:
-            # Import here after DLL is loaded
-            from System.Data import CommandType
-            
             cmd = self.conn.CreateCommand()
-            cmd.CommandText = table_name
-            cmd.CommandType = CommandType.TableDirect
-            self.reader = cmd.ExecuteExtendedReader()
+            
+            if sql_query:
+                # Use SQL query
+                print(f"\nExecuting SQL query: {sql_query}")
+                cmd.CommandText = sql_query
+            else:
+                # Direct table access
+                from System.Data import CommandType
+                cmd.CommandText = table_name
+                cmd.CommandType = CommandType.TableDirect
+            
+            self.reader = cmd.ExecuteReader()
             return self.reader
-        except ImportError as e:
-            raise RuntimeError(f"Failed to import Advantage modules: {str(e)}. Make sure DLL is loaded correctly.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to execute query: {str(e)}")
 
     def close(self) -> None:
         """Close all connections and readers."""

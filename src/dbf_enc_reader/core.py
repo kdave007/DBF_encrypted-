@@ -24,131 +24,56 @@ class DBFReader:
         Args:
             table_name: Name of the table to read
             limit: Optional limit on number of records to read
-            filters: Optional list of filter conditions. Each filter is a dict with:
-                - 'field': Field name to filter on
-                - 'value': Value to compare against for normal filters
-                - 'operator': Comparison operator ('=', '>', '<', '>=', '<=', 'range')
-                - 'from_value': Start value for range filters
-                - 'to_value': End value for range filters
-                - 'is_date': Whether this is a date field
+            filters: Optional list of filter conditions
             
         Returns:
             List of records as dictionaries
         """
         results = []
         with self.connection as conn:
-            reader = conn.get_reader(table_name)
+            from System.Data import CommandType
             
-            # Get total records first
-            total_records = 0
+            # Create command with TableDirect for better performance
+            cmd = conn.conn.CreateCommand()
+            cmd.CommandType = CommandType.TableDirect
+            cmd.CommandText = table_name
+            cmd.AdsOptimizedFilters = True  # Enable AOF for better performance
+            
+            # Get reader
+            reader = cmd.ExecuteExtendedReader()
+            
+            # Apply filters if any
+            if filters:
+                filter_conditions = []
+                for f in filters:
+                    if f['field'] == 'F_EMISION':
+                        if f['operator'] == 'range':
+                            filter_conditions.append(
+                                f"F_EMISION >= '{f['from_value']}' AND "
+                                f"F_EMISION <= '{f['to_value']}'"
+                            )
+                        else:
+                            filter_conditions.append(
+                                f"F_EMISION {f['operator']} '{f['value']}'"
+                            )
+                
+                if filter_conditions:
+                    filter_expr = " AND ".join(filter_conditions)
+                    print(f"\nApplying AOF filter: {filter_expr}")
+                    reader.Filter = filter_expr
+            
+            # Process results
             while reader.Read():
-                total_records += 1
-            
-            # Reset reader position
-            reader.Close()
-            reader = conn.get_reader(table_name)
-            
-            # Read records from newest to oldest
-            count = 0
-            records_to_skip = 0
-            
-            while reader.Read():
-                # Skip records until we reach the desired starting point
-                if records_to_skip < total_records - 1:
-                    records_to_skip += 1
-                    continue
-                    
-                if limit and count >= limit:
-                    break
-                    
                 record = {}
                 for i in range(reader.FieldCount):
                     field_name = reader.GetName(i)
                     value = reader.GetValue(i)
                     record[field_name] = self.converter.convert_value(value)
                     
-
-                
-                # Apply filters in memory
-                if filters and not self._apply_filters(record, filters):
-                    continue
-                    
                 results.append(record)
-                count += 1
-                records_to_skip -= 1
             
             return results
             
-    def _apply_filters(self, record: Dict[str, Any], filters: List[Dict[str, Any]]) -> bool:
-        """Apply filters to a record in memory.
-        
-        Args:
-            record: The record to filter
-            filters: List of filter conditions
-            
-        Returns:
-            True if record matches all filters, False otherwise
-        """
-        from datetime import datetime
-        
-        for f in filters:
-            field = f['field']
-            operator = f.get('operator', '=')
-            is_date = f.get('is_date', False)
-            
-            if field not in record:
-                return False
-                
-            record_value = record[field]
-            
-            if is_date:
-                def parse_date(date_str):
-                    # Extract just the date part (assuming dd/mm/yyyy format)
-                    date_part = date_str.split(' ')[0]
-                    try:
-                        result = datetime.strptime(date_part, '%d/%m/%Y')
-                        return result
-                    except ValueError as e:
-                        print(f"Error parsing date: {date_str} -> {str(e)}")
-                        raise
-                
-                # Convert date strings to datetime objects
-                if operator == 'range':
-                    from_value = parse_date(f['from_value'])
-                    to_value = parse_date(f['to_value'])
-                    record_date = parse_date(record_value)
-                    if not (from_value <= record_date <= to_value):
-                        return False
-                else:
-                    filter_date = parse_date(f['value'])
-                    record_date = parse_date(record_value)
-                    
-                    if operator == '=' and record_date != filter_date:
-                        return False
-                    elif operator == '>' and record_date <= filter_date:
-                        return False
-                    elif operator == '<' and record_date >= filter_date:
-                        return False
-                    elif operator == '>=' and record_date < filter_date:
-                        return False
-                    elif operator == '<=' and record_date > filter_date:
-                        return False
-            else:
-                # Handle non-date comparisons
-                filter_value = f['value']
-                
-                if operator == '=' and record_value != filter_value:
-                    return False
-                elif operator == '>' and record_value <= filter_value:
-                    return False
-                elif operator == '<' and record_value >= filter_value:
-                    return False
-                elif operator == '>=' and record_value < filter_value:
-                    return False
-                elif operator == '<=' and record_value > filter_value:
-                    return False
-                
-        return True
 
     def to_json(self, table_name: str, limit: Optional[int] = None, filters: Optional[List[Dict[str, Any]]] = None) -> str:
         """
